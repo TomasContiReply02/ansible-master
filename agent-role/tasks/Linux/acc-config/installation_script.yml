@@ -18,55 +18,41 @@
       become: true
       register: acc_group
 
-    # Real systemd: reload configuration
-    - name: "installation_script | reload systemctl"
+    - name: "installation_script | Reload systemd"
       ansible.builtin.command:
         cmd: "systemctl daemon-reload"
       become: true
-      register: cmd_res
-      when:
-        - '"SLES" not in ansible_facts.distribution'
+      when: '"SLES" not in ansible_facts.distribution'
 
-    # Real Linux: restart ACC
     - name: "installation_script | Restart agent client collector"
       ansible.builtin.service:
         name: "{{ acc_svc }}"
         state: restarted
       become: true
       register: acc_svc_res
-      when:
-        - '"SLES" not in ansible_facts.distribution'
+      when: '"SLES" not in ansible_facts.distribution'
 
-    # Real Linux: enable ACC
     - name: "installation_script | Enable agent client collector"
       ansible.builtin.service:
         name: "{{ acc_svc }}"
         enabled: true
       become: true
-      when:
-        - '"SLES" not in ansible_facts.distribution'
+      when: '"SLES" not in ansible_facts.distribution'
 
-    # SUSE: restart ACC
     - name: "installation_script | SUSE: Restart agent client collector"
       ansible.builtin.command:
         cmd: "service {{ acc_svc }} restart"
       become: true
-      when:
-        - '"SLES" in ansible_facts.distribution'
+      when: '"SLES" in ansible_facts.distribution'
 
-    # SUSE: enable ACC
     - name: "installation_script | SUSE: Enable agent client collector"
       ansible.builtin.command:
         cmd: "chkconfig {{ acc_svc }} on"
       become: true
-      when:
-        - '"SLES" in ansible_facts.distribution'
+      when: '"SLES" in ansible_facts.distribution'
 
     - name: "installation_script | DEBUG: installation service results"
       ansible.builtin.debug:
         msg: "RESULT= {{ acc_svc_res | default('Service management skipped') }}"
-      when:
-        - not (awx_mock_systemd | default(false) | bool)
 
-  when:
-    - not (awx_mock_systemd | default(false) | bool)
+  when: not (awx_mock_systemd | default(false) | bool)

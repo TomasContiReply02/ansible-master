@@ -96,4 +96,3 @@ rmt_src: "no"
 dest_agent_cert_path: "/etc/pki/tls/certs/acc01.crt"
 dest_agent_key_path: "/etc/pki/tls/private/acc01.key"
 # Mock systemd for Kubernetes test pods
-awx_mock_systemd: true
