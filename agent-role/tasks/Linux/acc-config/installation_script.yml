@@ -1,107 +1,4 @@
 
----
-
-- name: "installation_script | Copy installation script in {{ execution_path }}"
-  ansible.builtin.copy:
-    src: "{{ script_path }}"
-    dest: "{{ execution_path }}/install_linux-v2.2.bash"
-    owner: "{{ file_owner }}"
-    group: "{{ file_group }}"
-    mode: "754"
-  become: true
-
-- name: "installation_script | set fact debian-8 acc version"
-  ansible.builtin.set_fact:
-    ACC_VERSION: "3.0.0"
-  when:
-    - ansible_distro_lower == 'debian'
-    - ansible_facts.distribution_major_version == "8"
-
-- name: "installation_script | set fact NOT debian-8 acc version"
-  ansible.builtin.set_fact:
-    ACC_VERSION: "{{ ACC_INSTALL_VER }}"
-  when:
-    - (ansible_distro_lower == 'debian' and ansible_facts.distribution_major_version != "8") or (ansible_distro_lower != 'debian')
-
-- name: "installation_script | set fact debian/ubuntu distro variable"
-  ansible.builtin.set_fact:
-    installer_file: "{{ INSTALLER_DISTRO[item] }}"
-    installer_path: "{{ INSTALLER_BASE_PATH }}/{{ ACC_NAME }}-{{ ACC_VERSION }}-{{ INSTALLER_DISTRO[item] }}"
-  with_items:
-    - "{{ ansible_distro_lower }}-{{ ansible_facts.distribution_major_version }}"
-  when:
-    - ansible_distro_lower == 'debian' or ansible_distro_lower == 'ubuntu'
-
-- name: "installation_script | set fact other linux distro variable"
-  ansible.builtin.set_fact:
-    installer_file: "{{ INSTALLER_DISTRO[item] }}"
-    installer_path: "{{ INSTALLER_BASE_PATH }}/{{ ACC_NAME }}-{{ ACC_VERSION }}-{{ INSTALLER_DISTRO[item] }}"
-  with_items:
-    - "el7"
-  when:
-    - ansible_distro_lower != 'debian'
-    - ansible_distro_lower != 'ubuntu'
-
-
-###################### TO IMPLEMENT ################################################
-#- name: "installation_script | GCP: Get Access Token"
-#  tim.gcp.gcp_print_access_token:
-#    auth_kind: serviceaccount
-#    scopes:
-#      - https://www.googleapis.com/auth/cloud-platform.read-only
-#  delegate_to: localhost
-#  become: false
-#
-#- name: "installation_script | Download files from GCP Cloud Storage"
-#  get_url:
-#    url: "https://storage.googleapis.com/{{ file.bucket }}/{{ file.path }}"
-#    dest: "{{ execution_path }}/{{ ACC_NAME }}-{{ ACC_VERSION }}-{{ installer_file }}"
-#    force: yes
-#    headers:
-#      Authorization: "Bearer {{ gcp_creds.token }}"
-################################################################################
-
-
-######################## TO REPLACE ########################################
-- name: "installation_script | Copy installer package in {{ execution_path }}"
-  ansible.builtin.copy:
-    src: "{{ installer_path }}"
-    dest: "{{ execution_path }}/{{ ACC_NAME }}-{{ ACC_VERSION }}-{{ installer_file }}"
-  become: true
-###########################################################################
-
-
-- name: "installation_script | Run the Agent installation script"
-  ansible.builtin.shell:
-    cmd: "bash install_linux-v2.2.bash"
-  register: command_result
-  become: true
-  args:
-    chdir: "{{ execution_path }}/"
-  environment:
-    ACC_API_KEY: "{{ api_key }}"
-    ACC_MID: "wss://{{ mid_server_ip }}:{{ mid_server_port }}/ws/events"
-    ACC_FORCE: "{{ ACC_FORCE }}"
-    EXECUTION_TYPE: "{{ AGENT_EXEC_TYPE }}"
-    ACC_VERSION: "{{ ACC_VERSION }}"
-  ignore_errors: yes
-
-
-- name: "installation_script | DEBUG: installation script results"
-  debug:
-    msg: "SCRIPT RESULT= {{ command_result }} "
-  when:
-    - debug_mode
-
-
-- name: "installation_script | FAIL: Report installation script failure"
-  fail:
-    msg: "{{ command_result.stderr }}"
-  when:
-    - '"Install process completed successfully" not in command_result.stdout'
-    - '"Upgrade process completed successfully" not in command_result.stdout'
-
-
 - name: "installation_script | Modify parameter in the acc.service"
   block:
 
@@ -123,22 +20,12 @@
 
     # Real systemd: reload configuration
     - name: "installation_script | reload systemctl"
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: "systemctl daemon-reload"
       become: true
       register: cmd_res
       when:
         - '"SLES" not in ansible_facts.distribution'
-        - not (awx_mock_systemd | default(false) | bool)
-
-    # Mock: directly start ACC
-    - name: "installation_script | MOCK Restart agent client collector"
-      ansible.builtin.command:
-        cmd: "/usr/share/servicenow/agent-client-collector/bin/acc start"
-      become: true
-      register: acc_svc_res
-      when:
-        - awx_mock_systemd | default(false) | bool
 
     # Real Linux: restart ACC
     - name: "installation_script | Restart agent client collector"
@@ -149,7 +36,6 @@
       register: acc_svc_res
       when:
         - '"SLES" not in ansible_facts.distribution'
-        - not (awx_mock_systemd | default(false) | bool)
 
     # Real Linux: enable ACC
     - name: "installation_script | Enable agent client collector"
@@ -159,35 +45,28 @@
       become: true
       when:
         - '"SLES" not in ansible_facts.distribution'
-        - not (awx_mock_systemd | default(false) | bool)
 
     # SUSE: restart ACC
     - name: "installation_script | SUSE: Restart agent client collector"
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: "service {{ acc_svc }} restart"
       become: true
       when:
         - '"SLES" in ansible_facts.distribution'
-        - not (awx_mock_systemd | default(false) | bool)
 
     # SUSE: enable ACC
     - name: "installation_script | SUSE: Enable agent client collector"
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: "chkconfig {{ acc_svc }} on"
       become: true
       when:
         - '"SLES" in ansible_facts.distribution'
+
+    - name: "installation_script | DEBUG: installation service results"
+      ansible.builtin.debug:
+        msg: "RESULT= {{ acc_svc_res | default('Service management skipped') }}"
+      when:
         - not (awx_mock_systemd | default(false) | bool)
 
-    - name: "installation_script | DEBUG: installation script results"
-      debug:
-        msg: "RESULT= {{ acc_svc_res }}"
-
-- name: "installation_script | Copy check-allow-list.json file"
-  ansible.builtin.copy:
-    src: "{{ src_check_allow_list }}"
-    dest: "{{ dest_check_allow_list }}"
-    owner: "{{ file_owner }}"
-    group: "{{ file_group }}"
-    mode: "0400"
-  become: true
+  when:
+    - not (awx_mock_systemd | default(false) | bool)
