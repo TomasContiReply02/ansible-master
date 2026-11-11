@@ -1,0 +1,155 @@
+---
+## 1
+# Register the CA certificate on the OS Trust Store (pagina 4)
+# reg_ce_cert
+
+
+- name: "reg_ca_cert | create dir for cert file"
+  file:
+    path: "{{ item }}"
+    state: directory
+  become: true
+  loop:
+    - /etc/pki
+    - /etc/pki/tls
+    - /etc/pki/tls/certs
+    - /etc/pki/ca-trust/source
+    - /etc/pki/ca-trust/source/anchors
+  when:
+    - "'sles' not in ansible_distro_lower"
+
+- name: "reg_ca_cert | SUSE create dir for cert file"
+  file:
+    path: "{{ item }}"
+    state: directory
+  become: true
+  loop:
+    - /etc/pki
+    - /etc/pki/tls
+    - /etc/pki/tls/certs
+    - /etc/pki/tls/private
+    - /etc/pki/trust
+    - /etc/pki/trust/anchors
+  when:
+    - "'sles' in ansible_distro_lower"
+
+
+
+#[centos@acc01 ~]$ sudo cp -a labcacert.pem /etc/pki/ca-trust/source/anchors/
+- name: "reg_ca_cert | Copy cert file"
+  ansible.builtin.copy:
+    remote_src: no
+    src: "{{ src_root_cert_path }}"
+    dest: "{{ dest_root_cert_path.others }}"
+    owner: "{{ file_owner }}"
+    group: "{{ file_group }}"
+    mode: "{{ file_perm }}"
+  become: true
+  when:
+    - "'sles' not in ansible_distro_lower"
+
+
+- name: "reg_ca_cert | SUSE Copy cert file"
+  ansible.builtin.copy:
+    remote_src: no
+    src: "{{ src_root_cert_path }}"
+    dest: "{{ dest_root_cert_path.suse }}"
+    owner: "{{ file_owner }}"
+    group: "{{ file_group }}"
+    mode: "{{ file_perm }}"
+  become: true
+  when:
+    - "'sles' in ansible_distro_lower"
+
+
+#[centos@acc01 ~]$ sudo update-ca-trust extract
+- name: "reg_ca_cert | BLOCK"
+  block:
+    - name: "reg_ca_cert | Update ca cert"
+      ansible.builtin.shell:
+        cmd: "update-ca-trust extract"
+      become: true
+      register: update_ca_result
+
+    - name: "reg_ca_cert | DEBUG: Update ca cert"
+      debug:
+        msg: "{{ update_ca_result }}"
+      when:
+        - debug_mode
+
+    - name: "reg_ca_cert | FAIL: Update ca cert failure"
+      fail:
+        msg: "{{ update_ca_result.stdout }}}"
+      when: update_ca_result.rc != 0    ## verfify condition
+
+    - name: "reg_ca_cert | Verify CA cert"
+      ansible.builtin.shell:
+        cmd: "openssl verify {{ dest_root_cert_path.others }}"
+      become: true
+      register: verify_ca_result
+      ignore_errors: true
+
+    - name: "reg_ca_cert | DEBUG: Verify CA cert"
+      debug:
+        msg: "{{ verify_ca_result }}"
+      when:
+        - debug_mode
+
+    - name: "reg_ca_cert | FAIL: Verify CA cert failure"
+      fail:
+        msg: "{{ verify_ca_result.stdout }}"
+      when:
+        - "'TI_Trust_Technologies_Private_CA.cer: OK' not in verify_ca_result.stdout"
+        - not debug_mode
+
+  when:
+    - "'sles' not in ansible_distro_lower"
+
+
+- name: "reg_ca_cert | SUSE BLOCK"
+  block:
+    - name: "reg_ca_cert | SUSE Update ca cert"
+      ansible.builtin.shell:
+        cmd: "update-ca-certificates"
+      become: true
+      register: update_ca_result
+
+    - name: "reg_ca_cert | SUSE DEBUG: Update ca cert"
+      debug:
+        msg: "{{ update_ca_result }}"
+      when:
+        - debug_mode
+
+    - name: "reg_ca_cert | SUSE FAIL: Update ca cert failure"
+      fail:
+        msg: "{{ update_ca_result.stdout }}}"
+      when: update_ca_result.rc != 0    ## verfify condition
+
+    - name: "reg_ca_cert | SUSE Verify CA cert"
+      ansible.builtin.shell:
+        cmd: "openssl verify {{ dest_root_cert_path.suse }}"
+      become: true
+      register: verify_ca_result
+      ignore_errors: true
+
+    - name: "reg_ca_cert | DEBUG: Verify CA cert"
+      debug:
+        msg: "{{ verify_ca_result }}"
+      when:
+        - debug_mode
+
+    - name: "reg_ca_cert | FAIL: Verify CA cert failure"
+      fail:
+        msg: "{{ verify_ca_result.stdout }}"
+      when:
+        - "'TI_Trust_Technologies_Private_CA.cer: OK' not in verify_ca_result.stdout"
+        - not debug_mode
+  when:
+    - "'sles' in ansible_distro_lower"
+
+
+#[centos@acc01 ~]$ openssl verify labcacert.pem
+#labcacert.pem: OK
+
+
+

@@ -1,0 +1,13 @@
+---
+# handlers file for agent-role
+
+
+- name: Restart acc
+  ansible.builtin.service:
+    name: "{{ acc_svc }}"
+    state: restarted
+  become: true
+  #register: acc_svc_result
+
+
+

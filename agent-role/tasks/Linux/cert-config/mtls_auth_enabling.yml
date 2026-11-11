@@ -1,0 +1,148 @@
+---
+## 3
+# Configure the Agent Client Collector (pagina 18)
+# mtls_auth_enabling
+
+## preliminary steps
+- name: "mtls_auth_enabling | set fact of reteNGDC variable"
+  ansible.builtin.set_fact:
+    src_agent_cert_path: "{{ reteNGDC_env[item] }}.cer"
+    src_agent_key_path: "{{ reteNGDC_env[item] }}.key"
+  with_items:
+    - "{{ reteNGDC }}"
+
+- name: "mtls_auth_enabling | DEBUG: cert"
+  debug:
+    msg: "{{ src_agent_cert_path }} -- {{ src_agent_key_path }}"
+  when:
+    - debug_mode
+
+
+#[root@acc01 ~]# vi /etc/pki/tls/certs/acc01.crt
+#[root@acc01 ~]# vi /etc/pki/tls/private/acc01.key
+#[root@acc01 ~]# chown servicenow:servicenow /etc/pki/tls/private/acc01.key
+#[root@acc01 ~]# chmod 0400 /etc/pki/tls/private/acc01.key
+- name: "mtls_auth_enabling | Copy agent cert file"
+  ansible.builtin.copy:
+    remote_src: "{{ rmt_src }}"
+    src: "{{ src_agent_cert_path }}"
+    dest: "{{ dest_agent_cert_path }}"
+    owner: "{{ file_owner }}"
+    group: "{{ file_group }}"
+    mode: 0400 #"{{ file_perm }}"
+  become: true
+
+- name: "mtls_auth_enabling | Copy agent key file"
+  ansible.builtin.copy:
+    remote_src: "{{ rmt_src }}"
+    src: "{{ src_agent_key_path }}"
+    dest: "{{ dest_agent_key_path }}"
+    owner: "{{ file_owner }}"
+    group: "{{ file_group }}"
+    mode: 0400
+  become: true
+
+
+
+# [root@acc01 ~]# vi /etc/servicenow/agent-client-collector/acc.yml
+# # api-key: "XXXX"
+# key-file: "/etc/pki/tls/private/acc01.key"
+# cert-file: "/etc/pki/tls/certs/acc01.crt"
+- name: "mtls_auth_enabling | Register the api-key parmeter in {{ agent_coll_file_path }}"
+  ansible.builtin.shell:
+    cmd: "grep 'api-key:' {{ agent_coll_file_path }}"
+  become: true
+  register: grep_result
+
+- name: "mtls_auth_enabling | DEBUG: cat result"
+  debug:
+    msg: "{{ grep_result }}"
+  when:
+    - debug_mode
+
+- name: "mtls_auth_enabling | Modify parameter in the acc.yml"
+  block:
+    - name: "Comment the old parameter"
+      ansible.builtin.lineinfile:
+        path: "{{ agent_coll_file_path }}"
+        regexp: '^(\s*)(api-key:)(.*)'
+        line: "# {{ grep_result.stdout }} "
+      become: true
+
+    - name: "mtls_auth_enabling | Add parameter"
+      ansible.builtin.lineinfile:
+        path: "{{ agent_coll_file_path }}"
+        regexp: '^(\s*)({{ item }})(.*)'
+        state: present
+        line: "{{ item }}"
+      with_items:
+      - 'key-file: "{{ dest_agent_key_path }}"'
+      - 'cert-file: "{{ dest_agent_cert_path }}"'
+      become: true
+
+
+#[root@acc01 ~]# systemctl restart acc
+- name: "mtls_auth_enabling | reload systemctl"
+  ansible.builtin.shell:
+    cmd: "systemctl daemon-reload"
+  become: true
+  register: cmd_res
+  when:
+    - '"SLES" not in ansible_facts.distribution'
+
+- name: "mtls_auth_enabling | Restart agent client collector"
+  ansible.builtin.service:
+    name: "{{ acc_svc }}"
+    state: restarted
+  become: true
+  register: acc_svc_result
+  ignore_errors: true
+
+- name: "DEBUG: restart svc"
+  debug:
+    msg: "{{ acc_svc_result }}"
+  when:
+    - debug_mode
+
+#- name: "mtls_auth_enabling | FAIL: restart svc failure"  ## TO BE TESTED
+#  fail:
+#    msg: "FAIL - restart {{ acc_svc }} service FAILED"
+#  when:
+#    - acc_svc_result.status.Result != "success"    ### verfify condition \ vedere return code
+#    - not debug_mode
+
+
+#[root@acc01 ~]# tail -f /var/log/servicenow/agent-client-collector/acc.log
+#[…]
+#2022-09-21T19:29:45.33 [INFO] [agent] using tls client auth
+#[…]
+#2022-09-21T19:29:45.33 [INFO] [agent] connecting to backend URL: wss://XXXX:443/ws/events
+#2022-09-21T19:29:45.73 [INFO] [agent] successfully connected to the url: wss://XXXX:443/ws/events
+- name: "mtls_auth_enabling | Check acc.log"
+  ansible.builtin.shell:
+    cmd: "tail -60 {{ agent_coll_log_path }} | grep '{{ agent_coll_check_string }}'" # {{ agent_coll_log_path }}"
+  become: true
+  register: acc_log_result
+  ignore_errors: yes
+
+- name: "mtls_auth_enabling | DEBUG: check log"
+  debug:
+    msg: "{{ acc_log_result }}"
+  when:
+    - debug_mode
+
+- name: "mtls_auth_enabling | FAIL: check log failure"
+  block:
+    - name: "mtls_auth_enabling | FAIL: acc.log"
+      ansible.builtin.shell:
+        cmd: "tail -30 {{ agent_coll_log_path }}" # {{ agent_coll_log_path }}"
+      become: true
+      register: acc_log_res
+      ignore_errors: yes
+
+    - name: "mtls_auth_enabling | FAIL"
+      fail:
+        msg: "FAIL - no connection evidence in the acc log file -> {{ acc_log_res }}"
+  when:
+    - "'[agent] successfully connected to the url: ' not in acc_log_result.stdout"
+    - not debug_mode

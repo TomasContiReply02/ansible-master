@@ -1,0 +1,11 @@
+---
+
+- name: "Register the CA certificate on the OS Trust Store"
+  import_tasks: reg_ca_cert.yml
+
+- name: "Agent Client Collector Configuration"
+  import_tasks: agent_client_coll_config.yml
+
+- name: "Enable Client-Side Authentication using mTLS"
+  import_tasks: mtls_auth_enabling.yml
+

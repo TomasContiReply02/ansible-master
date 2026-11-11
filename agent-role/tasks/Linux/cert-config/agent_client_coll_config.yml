@@ -1,0 +1,68 @@
+---
+## 2
+# Agent Client Collector Configuration (pagina 9)
+# agent_client_coll_config
+
+#[root@acc01 ~]# vi /etc/servicenow/agent-client-collector/acc.yml
+#insecure-skip-tls-verify: false
+- name: "agent_client_coll_config | Modify tls parameter in the acc.yml"
+  ansible.builtin.lineinfile:
+    path: "{{ agent_coll_file_path }}"
+    regexp: '^(\s*)(insecure-skip-tls-verify:)(.*)'
+    line: "{{ skip_tls_verify }}"
+    state: present
+  become: true
+  register: acc_result
+
+- name: "agent_client_coll_config | DEBUG: Modify param acc.yml"
+  debug:
+    msg: "{{ acc_result }}"
+  when:
+    - debug_mode
+
+
+- name: "agent_client_coll_config | delete localhost in backend-url config in the acc.yml"
+  ansible.builtin.lineinfile:
+    path: "{{ agent_coll_file_path }}"
+    search_string: " - \"wss://127.0.0.1:8800/ws/events\""
+    line: " "
+  become: true
+  # when:
+  #   - ACC_INSTALL_VER == "4.0.0"
+
+
+- name: "agent_client_coll_config | insert correct backend-url in the acc.yml"
+  ansible.builtin.lineinfile:
+    path: "{{ agent_coll_file_path }}"
+    insertafter: "backend-url:"
+    line: "  - \"wss://{{ mid_server_ip }}:{{ mid_server_port }}/ws/events\""
+    state: present
+  become: true
+
+
+# add plugin cert
+- name: "agent_client_coll_config | Copy plugin cert file"
+  ansible.builtin.copy:
+    remote_src: no
+    src: "{{ src_plugin_cert_path }}"
+    dest: "{{ dest_plugin_cert_path }}"
+    owner: "{{ file_owner }}"
+    group: "{{ file_group }}"
+    mode: "{{ file_perm }}"
+  become: true
+
+
+# decommentare la chiave verify-plugin-signature del file acc.yml
+- name: "agent_client_coll_config | decomment key in file "
+  ansible.builtin.lineinfile:
+    path: "{{ agent_coll_file_path }}"
+    regexp: '^#\s*verify-plugin-signature:'
+    line: "{{ verify_plugin_signature }}"
+  become: true
+
+
+- name: "agent_client_coll_config | Check acc.yml"
+  ansible.builtin.shell:
+    cmd: "cat /etc/servicenow/agent-client-collector/acc.yml" # {{ agent_coll_log_path }}"
+  become: true
+

@@ -1,0 +1,31 @@
+---
+
+- name: "main | Ensuring system is compatible"
+  import_tasks: initial_check.yml
+  when:
+    - enable_check
+
+- name: "main | ServiceNow agent configuration on Linux"
+  import_tasks: "Linux/acc-config/init.yml"
+  when:
+    - enable_acc_config
+
+
+- name: "main | ServiceNow certificate configuration on Linux"
+  import_tasks: "Linux/cert-config/init.yml"
+  when:
+    - enable_certs
+
+
+- name: "main | ServiceNow certificate configuration on Linux"
+  import_tasks: "Linux/update-json-config/update_mon_file.yml"
+  when:
+    - only_update_allow_list
+
+- name: "main | ServiceNow certificate configuration on Linux"
+  import_tasks: "Linux/enable-agent/enable.yml"
+  when:
+    - enable_agent
+
+
+...

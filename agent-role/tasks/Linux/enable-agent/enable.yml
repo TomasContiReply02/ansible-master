@@ -1,0 +1,32 @@
+---
+
+- name: "installation_script | Enable agent client collector"
+  ansible.builtin.service:
+    name: "{{ acc_svc }}"
+    enabled: true
+  become: true
+  when:
+    - '"sles" not in ansible_distro_lower'
+
+- name: "installation_script | Restart agent client collector"
+  ansible.builtin.service:
+    name: "{{ acc_svc }}"
+    state: restarted
+  become: true
+  register: acc_svc_res
+  when:
+    - '"sles" not in ansible_distro_lower'
+
+- name: "installation_script | SUSE: Enable agent client collector"
+  ansible.builtin.shell:
+    cmd: "chkconfig {{ acc_svc }} on"
+  become: true
+  when:
+    - '"sles" in ansible_distro_lower'
+
+- name: "installation_script | SUSE: Restart agent client collector"
+  ansible.builtin.shell:
+    cmd: "service {{ acc_svc }} restart"
+  become: true
+  when:
+    - '"sles" in ansible_distro_lower'

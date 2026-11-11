@@ -1,0 +1,79 @@
+#playbook is used for install, upgrade, update monitoring configuration, enable the agent of ServiceNow agent on Linux servers
+#Automate ServiceNow agent lifecycle operations on Linux hosts
+---
+
+- name: "Agent installation role"
+  #all hosts selected from the inventory context used for that job
+  hosts: all #for all the hosts in the selected inventory scope, in AWX the inventory decide the target host
+  #dry_run = true → simulate changes
+  #dry_run = false → execute real changes
+  check_mode: "{{ dry_run }}"
+  become: false #no root escalation 
+  gather_facts: true #ansible collects system facts from the host
+  #script run with this path
+  environment:
+    PATH: '/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:{{ ansible_env.PATH }}'
+
+  vars:
+    #crean version of asset label, the playbook likely writes a label tag on the taget host
+    label: "{{ asset_label | trim }}"
+    #normalizes the distro name like ubuntu, redhat ..
+    ansible_distro_lower: "{{ ansible_distribution | lower }}"
+
+  tasks: #troubleshooting
+    - name: "Playbook | Print all available facts"
+      ansible.builtin.debug:
+        var: ansible_facts
+      when:
+        - debug_mode #If debug_mode: true, it prints all collected facts
+  #now there are tree execution branch for the heat of the dispatching
+  # 1. install
+  # 2. update monitoring
+  # 3. enable agent
+
+    - name: "Playbook | set fact to enable INSTALLATION actions"
+      ansible.builtin.set_fact:
+        enable_check: true
+        enable_acc_config: true
+        enable_tag: true
+        enable_connection: true
+        enable_script: true
+        enable_certs: true
+        only_update_allow_list: false
+        enable_agent: false
+      when:
+        - (AGENT_EXEC_TYPE == "INSTALL") or (AGENT_EXEC_TYPE == "UPGRADE")
+
+    - name: "Playbook | set fact to enable UPDATE ALLOW LIST actions"
+      ansible.builtin.set_fact:
+        enable_check: false
+        enable_acc_config: false
+        enable_tag: false
+        enable_connection: false
+        enable_script: false
+        enable_certs: false
+        only_update_allow_list: true
+        enable_agent: false
+      when:
+        - AGENT_EXEC_TYPE == "MONITORING_FILE_UPDATE"
+
+    - name: "Playbook | set fact to enable ENABLE AGENT actions"
+      ansible.builtin.set_fact:
+        enable_check: false
+        enable_acc_config: false
+        enable_tag: false
+        enable_connection: false
+        enable_script: false
+        enable_certs: false
+        only_update_allow_list: false
+        enable_agent: true
+      when:
+        - AGENT_EXEC_TYPE == "ENABLE_AGENT"
+
+    #after setting execution flags, run the actual role logic So all the real work happens inside agent-role.
+    #The playbook is only the front door.
+    - name: "Importing Installation role"
+      import_role:
+        name: agent-role
+
+

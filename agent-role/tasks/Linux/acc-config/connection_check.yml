@@ -1,0 +1,28 @@
+---
+
+
+# netcat -z -n -v mid_serv_ip 443
+- name: "connection_check | Check the connection (GET)"
+  block:
+    - name: "connection_check | Check the connection task"
+      ansible.builtin.wait_for:
+        host: "{{ mid_server_ip }}" #"{{ mid_srv_ip }}"
+        port: "{{ mid_server_port }}"
+        state: started
+        connect_timeout: 5
+        timeout: 10
+      register: connection_result
+#      ignore_errors: true
+  rescue:
+    - name: "connection_check | connection failure"
+      fail:
+        msg: "Connection error {{ connection_result }}"
+      when:
+#        - connection_result.msg != null  ## to verify
+        - not debug_mode
+
+- name: "connection_check | print connection result"
+  debug:
+    msg: "connection result  '{{ connection_result }}'"
+  when:
+    - debug_mode

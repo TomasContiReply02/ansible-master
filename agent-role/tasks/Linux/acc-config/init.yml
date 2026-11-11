@@ -1,0 +1,25 @@
+---
+
+# - name: "init | set fact of mid server variable"
+#   ansible.builtin.set_fact:
+#     mid_srv_ip: "{{ mid_env[item] }}"
+#   with_items:
+#     - "{{ reteNGDC }}"
+
+
+- name: "Ensuring connection availability"
+  import_tasks: connection_check.yml
+  when:
+    - enable_connection
+
+
+- name: "Tag insertion"
+  import_tasks: tag.yml
+  when:
+    - enable_tag
+
+
+- name: "Run the agent installation script"
+  import_tasks: installation_script.yml
+  when:
+    - enable_script

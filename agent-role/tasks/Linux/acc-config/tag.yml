@@ -1,0 +1,58 @@
+---
+
+- name: "tag | DEBUG: Print the tag"
+  debug:
+    msg: "Insertion the following {{ asset_label }} in {{ tag_path }}"
+  when:
+    - debug_mode
+
+
+
+- name: "tag | create the tag path"
+  ansible.builtin.file:
+    path: "{{ tag_path }}"
+    state: directory
+    owner: "{{ file_owner }}"
+    group: "{{ file_group }}"
+    mode: "u=rwx,g=rx,o=rx"   #"{{ file_perm }}"
+  become: true
+  when:
+    -  label | length > 0
+    - '"NO_ETICHETTA" not in label'
+
+
+- name: "tag | Remove old tag file"
+  ansible.builtin.file:
+    path: "{{ tag_path }}/{{ tag_file }}"
+    state: absent
+    owner: "{{ file_owner }}"
+    group: "{{ file_group }}"
+    mode: "{{ file_perm }}"
+  become: true
+  when:
+    -  label | length > 0
+    - '"NO_ETICHETTA" not in label'
+
+
+- name: "tag | Create the tag file"
+  ansible.builtin.file:
+    path: "{{ tag_path }}/{{ tag_file }}"
+    state: touch
+    owner: "{{ file_owner }}"
+    group: "{{ file_group }}"
+    mode: "{{ file_perm }}"
+  become: true
+  when:
+    -  label | length > 0
+    - '"NO_ETICHETTA" not in label'
+
+- name: "tag | Append string to file"
+  ansible.builtin.lineinfile:
+    path: "{{ tag_path }}/{{ tag_file }}"
+    line: "{{ asset_label }}"
+    state: present
+    insertafter: EOF
+  become: true
+  when:
+    -  label | length > 0
+    - '"NO_ETICHETTA" not in label'

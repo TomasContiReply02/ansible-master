@@ -1,0 +1,97 @@
+---
+
+# vars file for agent-role
+dry_run: false
+debug_mode: false
+
+
+## ENABLING TASKS VARS ##
+enable_check: true
+#enable_acc_config: true
+#enable_tag: true
+#enable_connection: true
+#enable_script: true
+#enable_certs: true
+#only_update_allow_list: false
+
+## TAG TASK VARS ##
+tag_path: "/opt/HP/Discovery"
+tag_file: "etichetta.txt"
+asset_label: "NO_ETICHETTA"
+file_owner: "root"
+file_group: "root"
+file_perm: 'u=rw,g=rw,o=rw'  #dir: u=rwx,g=rx,o=rx
+
+
+## CONNECTIVITY TASK VARS ##
+mid_server_ip: "10.13.93.104"
+mid_server_port: "443"
+
+mid_env:
+  NGDC_SVIL_COLL: "10.24.244.132"
+  NGDC_C1_C2_DMZEXT: "10.29.166.196"
+  NGDC_C3: "10.38.60.244"
+  SAG: ""
+  OLDDC_C1C2: "10.38.26.244"
+  OLDDC_C3: "10.38.26.246"
+  OLDDC_MATRIX: "10.192.76.88"
+  DACON: "11.2.213.4"
+  DOLMEN: "10.51.200.183"
+
+
+## INSTALL SCRIPT VARIABLES ##
+#script_path: "agent-role/files/script/install_linux-v2.1.bash"
+script_path: "agent-role/files/script/install_linux-v2.2.bash"
+INSTALLER_BASE_PATH: "agent-role/files/installer/linux-pkgs"
+ACC_NAME: "agent-client-collector"
+ACC_INSTALL_VER: "3.5.3"
+AGENT_EXEC_TYPE: "INSTALL"
+ACC_FORCE: "yes"
+#SUPPORTED_DISTRO: false
+INSTALLER_DISTRO:
+  debian-8: "debian-8_amd64.deb"
+  debian-9: "debian-9_amd64.deb"
+  ubuntu-18: "ubuntu-1804_amd64.deb"
+  el7: "el7-x86_64.rpm"
+#  windows-201X:
+
+execution_path: "/tmp"
+ACC_MID: ""
+api_key: "640d188487be4190673065f30cbb35ef"
+#AGENT_EXEC_TYPE: "INSTALL"
+src_check_allow_list: "agent-role/files/check-allow-list.json"
+dest_check_allow_list: "/etc/servicenow/agent-client-collector"
+
+
+## CERTS VARIABLES ##
+acc_svc: "acc"
+#1
+src_root_cert_path: "agent-role/files/certs/TI_Trust_Technologies_Private_CA.cer"
+dest_root_cert_path:
+  suse: "/etc/pki/trust/anchors/TI_Trust_Technologies_Private_CA.cer"
+  others: "/etc/pki/ca-trust/source/anchors/TI_Trust_Technologies_Private_CA.cer"
+src_plugin_cert_path: "agent-role/files/certs/Sign_key.crt"
+dest_plugin_cert_path: "/etc/servicenow/agent-client-collector/cert/Sign_key.crt"
+FORCE_UPDATE: "no"  ## "yes"
+#2
+skip_tls_verify: "insecure-skip-tls-verify: false"
+verify_plugin_signature: "verify-plugin-signature: true"
+agent_coll_file_path: "/etc/servicenow/agent-client-collector/acc.yml"
+agent_coll_log_path: "/var/log/servicenow/agent-client-collector/acc.log"
+agent_coll_check_string: "successfully connected"
+#3
+reteNGDC: "test"
+reteNGDC_env:
+  NGDC_SVIL_COLL: "agent-role/files/certs/svil_coll/NGDC_SVIL_COL"
+  NGDC_C1_C2_DMZEXT: "agent-role/files/certs/c1_c2_dmzext/NGDC_C1_C2"
+  NGDC_C3: "agent-role/files/certs/c3/NGDC_C3"
+  SAG: "agent-role/files/certs/sag/sag"
+  NGDC_OLD_C1_C2: "agent-role/files/certs/old_c1_c2/"
+  NGDC_OLD_C3: "agent-role/files/certs/old_c3/"
+  NGDC_OLD_DC_MATRIX: "agent-role/files/certs/old_dc_matrix/"
+  NGDC_DACON: "agent-role/files/certs/dacon/"
+  NGDC_MAGISTRATURA: "agent-role/files/certs/magistratura/"
+
+rmt_src: "no"
+dest_agent_cert_path: "/etc/pki/tls/certs/acc01.crt"
+dest_agent_key_path: "/etc/pki/tls/private/acc01.key"

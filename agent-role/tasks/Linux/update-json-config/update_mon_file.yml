@@ -1,0 +1,24 @@
+---
+
+- name: "update_mon_file | STOP agent client collector"
+  ansible.builtin.service:
+    name: "{{ acc_svc }}"
+    state: stopped
+  become: true
+  register: acc_svc_result
+  notify:
+    - Restart acc
+
+- name: "update_mon_file | Copy check-allow-list.json file"
+  ansible.builtin.copy:
+    src: "{{ src_check_allow_list }}"
+    dest: "{{ dest_check_allow_list }}"
+    owner: "{{ file_owner }}"
+    group: "{{ file_group }}"
+    backup: true
+    force: true
+    mode: 0400
+  become: true
+  notify:
+    - Restart acc
+

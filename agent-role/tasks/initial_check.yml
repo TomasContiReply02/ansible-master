@@ -1,0 +1,48 @@
+---
+
+- name: "initial_check | Check distribution & version"
+  debug:
+    msg: "Linux distro {{ ansible_distro_lower}}/{{ ansible_facts.distribution_major_version }}/{{ ansible_facts.kernel }}" #- {{ ansible_facts.ansible_architecture }}"
+
+- name: "initial_check | FAIL: Report distro failure"
+  fail:
+    msg: "FAIL -> {{ ansible_distro_lower}}-{{ ansible_facts.distribution_major_version }} - {{ ansible_facts.ansible_architecture }} NOT SUPPORTED DISTRO"
+  when:
+    - ("debian" in ansible_distro_lower and ansible_facts.distribution_major_version != "8") or ("debian" in ansible_distro_lower and ansible_facts.distribution_major_version != "9")
+    - ("ubuntu" in ansible_distro_lower and ansible_facts.distribution_version != "18.04")
+    - ("redhat" in ansible_distro_lower and ansible_facts.distribution_major_version != "7") or ("redhat" in ansible_distro_lower and ansible_facts.distribution_major_version != "8") or ("RedHat" in ansible_distro_lowerand ansible_facts.distribution_major_version != "9")
+    - ("centos" in ansible_distro_lower and ansible_facts.distribution_major_version != "7") or ("centos" in ansible_distro_lower and ansible_facts.distribution_major_version != "8")
+    - ("sles" in ansible_distro_lower and ansible_facts.distribution_major_version != "12") or ("sles" in ansible_distro_lower and ansible_facts.distribution_major_version != "15")
+    - '"oraclelinux" not in ansible_distro_lower'
+    #- not debug_mode
+
+
+#- name: "initial_check | FAIL: Report Architecture failure"
+#  fail:
+#    msg: "FAIL -> Achitecture {{ ansible_facts.ansible_architecture }} NOT SUPPORTED DISTRO "
+#  when:
+#    - ansible_facts.ansible_architecture != "x86_64"
+
+
+- name: "initial_check | print reteNGDC var"
+  debug:
+    msg: "PRINT --> '{{ reteNGDC }}'"
+  when:
+    - debug_mode
+
+- name: "initial_check | FAIL: Report vars failure"
+  fail:
+    msg: "FAIL -> variable reteNGDC='{{ reteNGDC }}' not correctly initialized"
+  when:
+    - reteNGDC != "NGDC_SVIL_COLL"
+    - reteNGDC != "NGDC_C1_C2_DMZEXT"
+    - reteNGDC != "NGDC_C3"
+    - reteNGDC != "SAG"
+    - reteNGDC != "OLDDC_C1C2"
+    - reteNGDC != "OLDDC_C3"
+    - reteNGDC != "OLDDC_MATRIX"
+    - reteNGDC != "DACON"
+    - reteNGDC != "DOLMEN"
+    - not debug_mode
+
+
